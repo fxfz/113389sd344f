@@ -5,112 +5,593 @@
   <title>成绩分析工具</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 760px; margin: 30px auto; padding: 10px; }
-    h1 { text-align: center; }
-    .stats { display: flex; gap: 30px; margin: 20px 0; justify-content: center; }
-    .stat { background: #f0f2f5; border-radius: 8px; padding: 15px 25px; min-width: 100px; text-align: center; }
-    #chart-container { width: 100%; margin: 30px 0; }
-    table { border-collapse: collapse; width: 100%; margin: 20px 0;}
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center;}
-    th { background: #f9fafb;}
-    .upload-area { border: 2px dashed #aaa; border-radius: 8px; padding: 24px; text-align: center; margin: 30px 0;}
-    .upload-area.dragover { background: #f0f8ff;}
+    :root {
+      color-scheme: light;
+      --primary: #1976d2;
+      --primary-dark: #135ba1;
+      --surface: #ffffff;
+      --surface-alt: #f5f7fb;
+      --border: #d9e2ec;
+      --text: #1f2933;
+      --muted: #52606d;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 48px 16px 24px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      letter-spacing: 0.05em;
+    }
+    header p {
+      margin: 12px auto 0;
+      max-width: 560px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    main {
+      width: min(1080px, 92vw);
+      margin: 0 auto 80px;
+      background: var(--surface);
+      border-radius: 18px;
+      box-shadow: 0 20px 45px rgba(15, 46, 94, 0.12);
+      padding: 24px clamp(16px, 4vw, 42px) 48px;
+    }
+    .section-title {
+      margin: 32px 0 12px;
+      font-size: 1.15rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::before {
+      content: "";
+      width: 6px;
+      height: 20px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--primary), #64a1ff);
+      display: inline-block;
+    }
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      background: var(--surface-alt);
+      transition: all 0.25s ease;
+    }
+    .card:hover { border-style: solid; border-color: #c2d4f6; box-shadow: inset 0 0 0 1px rgba(25,118,210,0.12); }
+    .upload-area {
+      text-align: center;
+      cursor: pointer;
+      border: 2px dashed rgba(25,118,210,0.3);
+      background: #f7faff;
+    }
+    .upload-area.dragover { background: #ecf3ff; border-color: var(--primary); }
+    .upload-area p { margin: 8px 0; }
     .file-input { display: none; }
-    .btn { background: #1976d2; color: #fff; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;}
-    .btn:hover { background: #135ba1; }
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn.small { padding: 6px 14px; font-size: 0.9rem; }
+    .btn.secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid rgba(25,118,210,0.35);
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .btn.secondary:hover {
+      background: rgba(25,118,210,0.08);
+      color: var(--primary-dark);
+    }
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      resize: vertical;
+      min-height: 140px;
+      line-height: 1.4;
+      font-family: inherit;
+    }
+    textarea:focus,
+    input:focus,
+    .btn:focus-visible {
+      outline: 3px solid rgba(25,118,210,0.2);
+      border-color: var(--primary);
+    }
+    #message {
+      margin-top: 12px;
+      color: #b23c17;
+      background: #fff2e8;
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: none;
+    }
+    #result { display: none; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      margin: 24px 0 8px;
+      color: var(--muted);
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-alt);
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(25,118,210,0.18);
+    }
+    .controls input {
+      width: 70px;
+      border: none;
+      text-align: center;
+      font-weight: 600;
+      background: transparent;
+      color: var(--text);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .stat {
+      background: #f2f7ff;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      border: 1px solid rgba(25,118,210,0.08);
+    }
+    .stat-title {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    #chart-container {
+      width: 100%;
+      margin: 36px 0;
+      background: var(--surface-alt);
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid rgba(15, 46, 94, 0.05);
+    }
+    .insights {
+      background: var(--surface-alt);
+      border-radius: 16px;
+      padding: 20px 22px;
+      border: 1px solid rgba(15, 46, 94, 0.06);
+      margin-bottom: 28px;
+    }
+    .insights ul {
+      margin: 0;
+      padding-left: 20px;
+      line-height: 1.8;
+      color: var(--muted);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: var(--surface-alt);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(15,46,94,0.06);
+    }
+    thead { background: #e9f1ff; }
+    th, td {
+      padding: 12px 14px;
+      text-align: center;
+      border-bottom: 1px solid rgba(15, 46, 94, 0.06);
+    }
+    th {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    th .sort-indicator {
+      font-size: 0.75rem;
+      margin-left: 4px;
+    }
+    tbody tr:nth-child(odd) { background: rgba(233, 241, 255, 0.4); }
+    tbody tr.highlight-top { background: #fff4d6; }
+    tbody tr:hover { background: rgba(100, 161, 255, 0.18); }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--primary);
+      margin-right: 6px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 24px 12px 48px;
+    }
+    @media (max-width: 640px) {
+      header { padding-top: 32px; }
+      header h1 { font-size: 1.8rem; }
+      main { padding: 20px 16px 32px; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .controls label { justify-content: space-between; }
+      .stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    }
   </style>
 </head>
 <body>
-  <h1>成绩分析工具</h1>
-  <div class="upload-area" id="upload-area">
-    <p>拖拽CSV文件到此，或 <label class="btn">选择文件<input type="file" id="file-input" class="file-input" accept=".csv"></label></p>
-    <small>CSV格式示例：<br>姓名,分数<br>张三,89<br>李四,95</small>
-  </div>
-  <div id="result" style="display:none;">
-    <div class="stats" id="stats"></div>
-    <div id="chart-container"><canvas id="score-chart"></canvas></div>
-    <div>
-      <h3>成绩明细</h3>
-      <table id="data-table"></table>
-    </div>
-  </div>
+  <header>
+    <h1>成绩分析工具</h1>
+    <p>支持拖拽或粘贴CSV数据，自动完成统计分析、分布可视化和成绩洞察，帮助您快速掌握班级学情。</p>
+  </header>
+  <main>
+    <section>
+      <div class="section-title">导入数据</div>
+      <div class="upload-grid">
+        <label class="card upload-area" id="upload-area">
+          <input type="file" id="file-input" class="file-input" accept=".csv" />
+          <strong>拖拽CSV文件到此处</strong>
+          <p>或点击选择文件</p>
+          <small>CSV格式示例：<br>姓名,分数<br>张三,89</small>
+        </label>
+        <div class="card">
+          <p><strong>粘贴数据</strong></p>
+          <textarea id="manual-input" placeholder="姓名,分数\n张三,89\n李四,95"></textarea>
+          <div style="margin-top: 12px; display:flex; gap:10px; flex-wrap: wrap;">
+            <button class="btn small" id="analyze-manual">分析粘贴数据</button>
+            <button class="btn small secondary" id="load-demo">填充示例数据</button>
+          </div>
+        </div>
+      </div>
+      <div id="message"></div>
+    </section>
+
+    <section id="result">
+      <div class="controls">
+        <label>及格线
+          <input type="number" id="pass-line" value="60" min="0" max="150" />
+        </label>
+        <div id="summary" style="flex:1; min-width: 180px;"></div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="insights">
+        <strong>成绩洞察</strong>
+        <ul id="insights"></ul>
+      </div>
+      <div id="chart-container">
+        <canvas id="score-chart"></canvas>
+        <div class="legend">
+          <span>分数段人数分布</span>
+          <span id="pass-rate"></span>
+        </div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:0;">成绩明细</div>
+        <table>
+          <thead>
+            <tr>
+              <th data-key="name">姓名 <span class="sort-indicator"></span></th>
+              <th data-key="score">分数 <span class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer>
+    提示：数据仅在浏览器本地处理，不会被上传到任何服务器。
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // 处理文件上传和拖拽
     const fileInput = document.getElementById('file-input');
     const uploadArea = document.getElementById('upload-area');
+    const manualInput = document.getElementById('manual-input');
+    const analyzeManualBtn = document.getElementById('analyze-manual');
+    const loadDemoBtn = document.getElementById('load-demo');
+    const messageBox = document.getElementById('message');
+    const resultSection = document.getElementById('result');
+    const passLineInput = document.getElementById('pass-line');
+    const statsContainer = document.getElementById('stats');
+    const insightsList = document.getElementById('insights');
+    const passRateInfo = document.getElementById('pass-rate');
+    const tableBody = document.getElementById('table-body');
+    const summary = document.getElementById('summary');
+
+    const state = {
+      data: [],
+      nameCol: '姓名',
+      scoreCol: '分数',
+      sortKey: 'score',
+      sortDirection: 'desc',
+      chart: null
+    };
+
     uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-    uploadArea.addEventListener('dragleave', e => uploadArea.classList.remove('dragover'));
+    ['dragenter', 'dragover'].forEach(event => {
+      uploadArea.addEventListener(event, e => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(event => {
+      uploadArea.addEventListener(event, e => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+      });
+    });
     uploadArea.addEventListener('drop', e => {
-      e.preventDefault(); uploadArea.classList.remove('dragover');
       if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
-    fileInput.addEventListener('change', e => {
+
+    fileInput.addEventListener('change', () => {
       if (fileInput.files.length) handleFile(fileInput.files[0]);
     });
 
+    analyzeManualBtn.addEventListener('click', () => {
+      const value = manualInput.value.trim();
+      if (!value) return showMessage('请先在文本框中粘贴成绩数据。');
+      processCSV(value);
+    });
+
+    loadDemoBtn.addEventListener('click', () => {
+      const demo = `姓名,分数\n张三,89\n李四,95\n王五,72\n赵六,83\n钱七,61\n孙八,55\n周九,98\n吴十,67\n郑十一,76\n冯十二,92`;
+      manualInput.value = demo;
+      processCSV(demo);
+    });
+
+    passLineInput.addEventListener('input', debounce(() => {
+      if (!state.data.length) return;
+      const passValue = Number(passLineInput.value);
+      if (Number.isNaN(passValue)) {
+        showMessage('请输入有效的及格线数值');
+        return;
+      }
+      updateAnalysis();
+    }, 200));
+
+    document.querySelectorAll('thead th').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (state.sortKey === key) {
+          state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortKey = key;
+          state.sortDirection = key === 'score' ? 'desc' : 'asc';
+        }
+        renderTable();
+        updateSortIndicators();
+      });
+    });
+
     function handleFile(file) {
-      if (!file.name.endsWith('.csv')) return alert('请上传CSV文件');
+      if (!file.name.endsWith('.csv')) {
+        showMessage('请上传CSV格式的文件');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = e => processCSV(e.target.result);
+      reader.onerror = () => showMessage('读取文件失败，请重试');
       reader.readAsText(file, 'utf-8');
     }
 
-    // 解析CSV
-    function processCSV(text) {
-      const lines = text.replace(/\r/g, '').trim().split('\n');
-      if (lines.length < 2) return alert('数据不足，至少需要表头和一行数据');
-      const [header, ...rows] = lines;
-      let [nameCol, scoreCol] = header.split(',');
-      if (!nameCol || !scoreCol) return alert('表头必须包含两列，比如: 姓名,分数');
-      const data = rows.map(row => {
-        const [name, score] = row.split(',');
-        return { name: name?.trim(), score: parseFloat(score) };
-      }).filter(d => d.name && !isNaN(d.score));
-      if (!data.length) return alert('没有有效的数据行');
-      analyzeAndShow(data, nameCol, scoreCol);
+    function showMessage(text) {
+      messageBox.textContent = text;
+      messageBox.style.display = text ? 'block' : 'none';
     }
 
-    // 分析和展示
+    function processCSV(text) {
+      showMessage('');
+      const lines = text.replace(/\r/g, '\n').split(/\n+/).map(line => line.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        showMessage('数据不足，至少包含表头和一行数据。');
+        return;
+      }
+      const [header, ...rows] = lines;
+      const headerParts = header.split(/[,，\s\t]+/).map(h => h.trim());
+      if (headerParts.length < 2) {
+        showMessage('表头至少需要两列，例如：姓名,分数');
+        return;
+      }
+      const [nameCol, scoreCol] = headerParts;
+      const data = rows.map(row => {
+        const parts = row.split(/[,，\s\t]+/);
+        const name = parts[0]?.trim();
+        const score = parseFloat(parts[1]);
+        return { name, score };
+      }).filter(item => item.name && !Number.isNaN(item.score));
+
+      if (!data.length) {
+        showMessage('没有解析到有效的成绩数据，请检查格式。');
+        return;
+      }
+      analyzeAndShow(data, nameCol || '姓名', scoreCol || '分数');
+    }
+
     function analyzeAndShow(data, nameCol, scoreCol) {
-      // 统计分析
-      const scores = data.map(d => d.score).sort((a, b) => a - b);
+      state.data = data;
+      state.nameCol = nameCol;
+      state.scoreCol = scoreCol;
+      state.sortKey = 'score';
+      state.sortDirection = 'desc';
+      resultSection.style.display = 'block';
+      updateSortIndicators();
+      updateAnalysis();
+    }
+
+    function updateAnalysis() {
+      if (!state.data.length) return;
+      const passLine = clamp(Number(passLineInput.value) || 0, 0, 150);
+      passLineInput.value = passLine;
+      const scores = state.data.map(item => item.score).sort((a, b) => a - b);
       const count = scores.length;
       const sum = scores.reduce((a, b) => a + b, 0);
       const avg = sum / count;
       const min = scores[0];
       const max = scores[count - 1];
-      const median = count % 2 ? scores[(count-1)/2] : (scores[count/2-1]+scores[count/2])/2;
-      // 分布统计
-      const bins = Array(11).fill(0); // 0-10, 10-20, ..., 90-100
-      scores.forEach(s => {
-        let idx = Math.floor(s/10);
-        if (s === 100) idx = 10;
-        bins[idx]++;
+      const median = count % 2 ? scores[(count - 1) / 2] : (scores[count / 2 - 1] + scores[count / 2]) / 2;
+      const variance = scores.reduce((acc, score) => acc + Math.pow(score - avg, 2), 0) / count;
+      const stdDev = Math.sqrt(variance);
+      const passCount = scores.filter(score => score >= passLine).length;
+      const passRate = passCount / count;
+      const topStudents = [...state.data].sort((a, b) => b.score - a.score).slice(0, Math.min(3, count));
+      const bottomStudents = [...state.data].sort((a, b) => a.score - b.score).slice(0, Math.min(3, count));
+      const bins = new Array(11).fill(0);
+      scores.forEach(score => {
+        let index = Math.floor(score / 10);
+        if (score === 100) index = 10;
+        index = clamp(index, 0, 10);
+        bins[index]++;
       });
-      // 显示统计
-      document.getElementById('result').style.display = '';
-      document.getElementById('stats').innerHTML = `
-        <div class="stat"><div>平均分</div><b>${avg.toFixed(2)}</b></div>
-        <div class="stat"><div>最高分</div><b>${max}</b></div>
-        <div class="stat"><div>最低分</div><b>${min}</b></div>
-        <div class="stat"><div>中位数</div><b>${median}</b></div>
-        <div class="stat"><div>人数</div><b>${count}</b></div>`;
-      // 绘制分布图
-      if (window.scoreChart) window.scoreChart.destroy();
-      window.scoreChart = new Chart(document.getElementById('score-chart'), {
+
+      const gradeMap = [
+        { label: '优秀 (≥90)', min: 90, max: Infinity },
+        { label: '良好 (80-89)', min: 80, max: 90 },
+        { label: '中等 (70-79)', min: 70, max: 80 },
+        { label: '及格 (60-69)', min: 60, max: 70 },
+        { label: '不及格 (<60)', min: -Infinity, max: 60 }
+      ];
+      const gradeInfo = gradeMap.map(group => ({
+        label: group.label,
+        count: state.data.filter(item => item.score >= group.min && item.score < group.max).length
+      }));
+
+      statsContainer.innerHTML = `
+        ${renderStat('平均分', avg.toFixed(2))}
+        ${renderStat('最高分', max.toFixed(1))}
+        ${renderStat('最低分', min.toFixed(1))}
+        ${renderStat('中位数', median.toFixed(1))}
+        ${renderStat('标准差', stdDev.toFixed(2))}
+        ${renderStat('人数', count)}
+      `;
+
+      summary.textContent = `当前共 ${count} 人，平均分 ${avg.toFixed(1)}，及格率 ${(passRate * 100).toFixed(1)}%。`;
+      passRateInfo.textContent = `及格人数：${passCount} 人，及格率 ${(passRate * 100).toFixed(1)}%`;
+
+      insightsList.innerHTML = `
+        <li>Top${topStudents.length}：${topStudents.map(item => `${item.name}(${item.score})`).join('、')}</li>
+        <li>后${bottomStudents.length}：${bottomStudents.map(item => `${item.name}(${item.score})`).join('、')}</li>
+        <li>分数波动：标准差 ${stdDev.toFixed(2)}，${stdDev > 15 ? '成绩分布较为分散' : '成绩比较集中'}</li>
+        <li>成绩层次：${gradeInfo.map(info => `${info.label} ${info.count} 人`).join('，')}</li>
+      `;
+
+      updateChart(bins);
+      renderTable();
+    }
+
+    function renderTable() {
+      const sorted = [...state.data].sort((a, b) => {
+        const dir = state.sortDirection === 'asc' ? 1 : -1;
+        if (state.sortKey === 'score') {
+          return (a.score - b.score) * dir;
+        }
+        return a.name.localeCompare(b.name, 'zh-CN') * dir;
+      });
+      const topSet = new Set([...state.data].sort((a, b) => b.score - a.score).slice(0, 3).map(item => item.name));
+      tableBody.innerHTML = sorted.map(item => `
+        <tr class="${topSet.has(item.name) ? 'highlight-top' : ''}">
+          <td>${item.name}</td>
+          <td>${item.score.toFixed(1)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('thead th').forEach(th => {
+        const indicator = th.querySelector('.sort-indicator');
+        indicator.textContent = '';
+        if (th.dataset.key === state.sortKey) {
+          indicator.textContent = state.sortDirection === 'asc' ? '▲' : '▼';
+        }
+      });
+    }
+
+    function updateChart(bins) {
+      const ctx = document.getElementById('score-chart');
+      if (state.chart) state.chart.destroy();
+      state.chart = new Chart(ctx, {
         type: 'bar',
         data: {
           labels: ['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80-89','90-99','100'],
-          datasets: [{ label: '人数', data: bins, backgroundColor: '#1976d2' }]
+          datasets: [{
+            label: '人数',
+            data: bins,
+            backgroundColor: '#1976d2',
+            borderRadius: 6
+          }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          }
+        }
       });
-      // 展示明细表
-      let table = `<tr><th>${nameCol}</th><th>${scoreCol}</th></tr>`;
-      data.forEach(d => table += `<tr><td>${d.name}</td><td>${d.score}</td></tr>`);
-      document.getElementById('data-table').innerHTML = table;
+    }
+
+    function renderStat(title, value) {
+      return `<div class="stat"><div class="stat-title">${title}</div><div class="stat-value">${value}</div></div>`;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
     }
   </script>
 </body>
