@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>成绩分析工具</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 760px; margin: 30px auto; padding: 10px; }
+    h1 { text-align: center; }
+    .stats { display: flex; gap: 30px; margin: 20px 0; justify-content: center; }
+    .stat { background: #f0f2f5; border-radius: 8px; padding: 15px 25px; min-width: 100px; text-align: center; }
+    #chart-container { width: 100%; margin: 30px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 20px 0;}
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center;}
+    th { background: #f9fafb;}
+    .upload-area { border: 2px dashed #aaa; border-radius: 8px; padding: 24px; text-align: center; margin: 30px 0;}
+    .upload-area.dragover { background: #f0f8ff;}
+    .file-input { display: none; }
+    .btn { background: #1976d2; color: #fff; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;}
+    .btn:hover { background: #135ba1; }
+  </style>
+</head>
+<body>
+  <h1>成绩分析工具</h1>
+  <div class="upload-area" id="upload-area">
+    <p>拖拽CSV文件到此，或 <label class="btn">选择文件<input type="file" id="file-input" class="file-input" accept=".csv"></label></p>
+    <small>CSV格式示例：<br>姓名,分数<br>张三,89<br>李四,95</small>
+  </div>
+  <div id="result" style="display:none;">
+    <div class="stats" id="stats"></div>
+    <div id="chart-container"><canvas id="score-chart"></canvas></div>
+    <div>
+      <h3>成绩明细</h3>
+      <table id="data-table"></table>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // 处理文件上传和拖拽
+    const fileInput = document.getElementById('file-input');
+    const uploadArea = document.getElementById('upload-area');
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', e => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault(); uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.name.endsWith('.csv')) return alert('请上传CSV文件');
+      const reader = new FileReader();
+      reader.onload = e => processCSV(e.target.result);
+      reader.readAsText(file, 'utf-8');
+    }
+
+    // 解析CSV
+    function processCSV(text) {
+      const lines = text.replace(/\r/g, '').trim().split('\n');
+      if (lines.length < 2) return alert('数据不足，至少需要表头和一行数据');
+      const [header, ...rows] = lines;
+      let [nameCol, scoreCol] = header.split(',');
+      if (!nameCol || !scoreCol) return alert('表头必须包含两列，比如: 姓名,分数');
+      const data = rows.map(row => {
+        const [name, score] = row.split(',');
+        return { name: name?.trim(), score: parseFloat(score) };
+      }).filter(d => d.name && !isNaN(d.score));
+      if (!data.length) return alert('没有有效的数据行');
+      analyzeAndShow(data, nameCol, scoreCol);
+    }
+
+    // 分析和展示
+    function analyzeAndShow(data, nameCol, scoreCol) {
+      // 统计分析
+      const scores = data.map(d => d.score).sort((a, b) => a - b);
+      const count = scores.length;
+      const sum = scores.reduce((a, b) => a + b, 0);
+      const avg = sum / count;
+      const min = scores[0];
+      const max = scores[count - 1];
+      const median = count % 2 ? scores[(count-1)/2] : (scores[count/2-1]+scores[count/2])/2;
+      // 分布统计
+      const bins = Array(11).fill(0); // 0-10, 10-20, ..., 90-100
+      scores.forEach(s => {
+        let idx = Math.floor(s/10);
+        if (s === 100) idx = 10;
+        bins[idx]++;
+      });
+      // 显示统计
+      document.getElementById('result').style.display = '';
+      document.getElementById('stats').innerHTML = `
+        <div class="stat"><div>平均分</div><b>${avg.toFixed(2)}</b></div>
+        <div class="stat"><div>最高分</div><b>${max}</b></div>
+        <div class="stat"><div>最低分</div><b>${min}</b></div>
+        <div class="stat"><div>中位数</div><b>${median}</b></div>
+        <div class="stat"><div>人数</div><b>${count}</b></div>`;
+      // 绘制分布图
+      if (window.scoreChart) window.scoreChart.destroy();
+      window.scoreChart = new Chart(document.getElementById('score-chart'), {
+        type: 'bar',
+        data: {
+          labels: ['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80-89','90-99','100'],
+          datasets: [{ label: '人数', data: bins, backgroundColor: '#1976d2' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+      // 展示明细表
+      let table = `<tr><th>${nameCol}</th><th>${scoreCol}</th></tr>`;
+      data.forEach(d => table += `<tr><td>${d.name}</td><td>${d.score}</td></tr>`);
+      document.getElementById('data-table').innerHTML = table;
+    }
+  </script>
+</body>
+</html>
